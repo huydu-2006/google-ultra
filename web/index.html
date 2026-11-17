@@ -84,6 +84,7 @@
         <div class="a">之后 US$199.99/月</div>
       </div>
     </div>
+    <label class="opt"><input type="checkbox" id="yt" checked> 带上 YouTube Premium 附加项（提示不可用时取消勾选再试）</label>
     <label class="opt"><input type="checkbox" id="legacy"> 兼容模式（用内置指纹，个别浏览器要开这个）</label>
   </div>
 
@@ -100,6 +101,7 @@
   <div class="note">
     <b>开完记得取消自动续费</b>。路径：Play 商店 → 头像 → 付款和订阅 → 订阅 → Google One → 取消。取消后已经用掉的时间不受影响。<br><br>
     <b>提示未登录 / not signed in</b>：链接会先经过 Google 账号选择器。填了邮箱就锁定这个号；没填就在弹窗里选号。还不行就检查浏览器是否拦了 Google 的 cookie，或换到已登录该账号的浏览器打开。<br><br>
+    <b>提示 YouTube Premium 不可用</b>：取消勾选「带上 YouTube Premium 附加项」再试。如果 Ultra 单独也报错，说明这个号的 Ultra offer 不可用或 token 已失效。<br><br>
     <b>出现 400</b>：说明 Google 在渲染结算页之前就拒了请求。常见原因：① 账号/IP 不是美区，或没绑卡；② 网页版用的固定 offer token 已失效（换脚本版实时查）；③ 浏览器指纹对不上（用生成链接的同一个浏览器打开，别复制到别的浏览器；也可勾「兼容模式」再试）。<br><br>
     <b>提示「不符合免费试用条件」</b>：这个号没资格，换一个。需要已绑卡且当前没有任何 Google One 订阅，一个号基本只有一次机会。
   </div>
@@ -115,6 +117,7 @@ const OFFERS = {
   "20tb": { sku: "g1.play.20tb",    token: "AYrTWi65Jbm3KRubLXLLA3Re29zKibSnRbvAJEPfxEIVs/d57w8vEhsU7hSkSAfGyjZH8B7/5aj5UTlidbsEwUH8aPN2RTA6pKiltA==" },
   "30tb": { sku: "g1.play.ai.pro",  token: "AYrTWi7nBQ2Zn0z4s+QJOwg9kQRwH3+z+HXpzRqw9IIU4/C48vPvjH32Bub8SHrWq3YX+yI4g1wJgviYiLCobJNqc9DqRd9WZnDdaQ==" }
 };
+const YOUTUBE = { sku: "g1.youtube_premium_individual_add_on", token: "AVbCH/eW4Nfp8KBl0zlm7x9PhaiCvpnqwUuL2D8NFPBQgmM9+HuYS1h2xH5lLWU/BsBj775LK5GqK8UHKqoSzhDDz+PqP3paNesqLU0r9i6XCrYa" };
 
 /* 把 / - ; ( ) , : 换成客户端内部用的两字节编码 */
 function enc(s) {
@@ -157,10 +160,12 @@ function buildUrl(key, legacy) {
   const o = OFFERS[key];
   const fp = legacy ? FP_TEMPLATE : buildFingerprint();
   const item = [[`subs:com.google.android.apps.subscriptions.red:${o.sku}`, 21], null, null, null, 1, [o.token]];
+  const ytItem = [[`subs:com.google.android.apps.subscriptions.red:${YOUTUBE.sku}`, 21], null, null, null, 1, [YOUTUBE.token]];
+  const withYt = document.getElementById("yt").checked;
   const ear = new Array(25).fill(null);
   ear[2] = [null, null, PATH];
   ear[4] = [fp];
-  ear[13] = [[item]];
+  ear[13] = withYt ? [[item, ytItem]] : [[item]];
   ear[21] = 1;
 
   const id = "I0_" + Date.now();

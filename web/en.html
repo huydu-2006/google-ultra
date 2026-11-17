@@ -84,6 +84,7 @@
         <div class="a">then US$199.99/mo</div>
       </div>
     </div>
+    <label class="opt"><input type="checkbox" id="yt" checked> Include YouTube Premium add-on (uncheck if it says unavailable)</label>
     <label class="opt"><input type="checkbox" id="legacy"> Compatibility mode (built-in fingerprint, for stubborn browsers)</label>
   </div>
 
@@ -100,6 +101,7 @@
   <div class="note">
     <b>Cancel before the trial ends.</b> Play → profile → Payments &amp; subscriptions → Subscriptions → Google One → Cancel. You keep the remaining trial time.<br><br>
     <b>"Not signed in":</b> the link goes through Google's account chooser first. If you entered an email, it locks onto that account; if not, pick the account in the prompt. Still failing? Check that the browser is not blocking Google cookies, or open the link in the browser where that account is signed in.<br><br>
+    <b>"YouTube Premium isn't available":</b> uncheck "Include YouTube Premium add-on" and try again. If Ultra alone also errors, the Ultra offer is unavailable for this account or the token has expired.<br><br>
     <b>Seeing 400:</b> Google rejected the request before rendering checkout. Common causes: (1) the account/IP is not US, or no payment method is attached; (2) the hardcoded offer token in the web version has expired (use the script version to query a live token); (3) the browser fingerprint does not match (open the link in the same browser that generated it; do not copy it to another browser; try Compatibility mode).<br><br>
     <b>"You're not eligible for a free trial":</b> the account has no trial left. You need a payment method attached and no active subscription. One trial per account — don't test on your main one.
   </div>
@@ -115,6 +117,7 @@ const OFFERS = {
   "20tb": { sku: "g1.play.20tb",    token: "AYrTWi65Jbm3KRubLXLLA3Re29zKibSnRbvAJEPfxEIVs/d57w8vEhsU7hSkSAfGyjZH8B7/5aj5UTlidbsEwUH8aPN2RTA6pKiltA==" },
   "30tb": { sku: "g1.play.ai.pro",  token: "AYrTWi7nBQ2Zn0z4s+QJOwg9kQRwH3+z+HXpzRqw9IIU4/C48vPvjH32Bub8SHrWq3YX+yI4g1wJgviYiLCobJNqc9DqRd9WZnDdaQ==" }
 };
+const YOUTUBE = { sku: "g1.youtube_premium_individual_add_on", token: "AVbCH/eW4Nfp8KBl0zlm7x9PhaiCvpnqwUuL2D8NFPBQgmM9+HuYS1h2xH5lLWU/BsBj775LK5GqK8UHKqoSzhDDz+PqP3paNesqLU0r9i6XCrYa" };
 
 /* 把 / - ; ( ) , : 换成客户端内部用的两字节编码 */
 function enc(s) {
@@ -157,10 +160,12 @@ function buildUrl(key, legacy) {
   const o = OFFERS[key];
   const fp = legacy ? FP_TEMPLATE : buildFingerprint();
   const item = [[`subs:com.google.android.apps.subscriptions.red:${o.sku}`, 21], null, null, null, 1, [o.token]];
+  const ytItem = [[`subs:com.google.android.apps.subscriptions.red:${YOUTUBE.sku}`, 21], null, null, null, 1, [YOUTUBE.token]];
+  const withYt = document.getElementById("yt").checked;
   const ear = new Array(25).fill(null);
   ear[2] = [null, null, PATH];
   ear[4] = [fp];
-  ear[13] = [[item]];
+  ear[13] = withYt ? [[item, ytItem]] : [[item]];
   ear[21] = 1;
 
   const id = "I0_" + Date.now();

@@ -4,6 +4,7 @@
 
 用法（三步）：
     python3 ultra0.py --check            # 1. 环境自检
+    python3 ultra0.py --query            # 只查 offer token，不拉起收银台
     python3 ultra0.py accounts.txt       # 2. 批量跑号
     python3 ultra0.py --account a@b.com:密码:2FA密钥   # 单号
 
@@ -413,7 +414,7 @@ def launch_app() -> int:
     return int(pid) if pid.strip().isdigit() else 0
 
 
-def build_js(plan: str = "auto") -> str:
+def build_js(plan: str = "auto", query_only: bool = False) -> str:
     """按 plan 选择要查询的商品：5x=20TB，20x=30TB（隐藏带试用 ID）。"""
     js = FRIDA_JS
     if plan == "20x":
@@ -422,15 +423,22 @@ def build_js(plan: str = "auto") -> str:
     elif plan == "5x":
         js = js.replace('var PRODUCTS=["g1.play.20tb","g1.play.ai.pro","g1.30tb"];',
                         'var PRODUCTS=["g1.play.20tb"];')
+    if query_only:
+        js = js.replace("token:tok.slice(0,24)", "token:tok")
+        js = js.replace(
+            'S({ev:"chosen", product:best.product, id:best.id, period:best.period});\n'
+            '      launch(best.pd, best.offer);',
+            'S({ev:"chosen", product:best.product, id:best.id, period:best.period, token:best.token});'
+        )
     return js
 
 
-def run_trial(pid: int, wait=90, plan="auto") -> dict:
+def run_trial(pid: int, wait=90, plan="auto", query_only=False) -> dict:
     import frida
     step("注入计费模块，查询免费试用")
     dev = frida.get_usb_device(timeout=10)
     sess = dev.attach(pid)
-    res = {"offers": [], "launched": None, "purchase": None, "errors": []}
+    res = {"offers": [], "chosen": None, "launched": None, "purchase": None, "errors": []}
 
     def on_msg(m, _):
         p = m.get("payload") or {}
@@ -438,6 +446,10 @@ def run_trial(pid: int, wait=90, plan="auto") -> dict:
         if ev == "offer":
             res["offers"].append(p)
             note(f"offer {p.get('id')} → {p.get('micros')} ({p.get('p0','')})")
+        elif ev == "chosen":
+            res["chosen"] = p
+            if p.get("token"):
+                note(f"chosen {p.get('id')} token={p.get('token')}")
         elif ev == "launched":
             res["launched"] = p
             ok(f"已拉起收银台：{p}")
@@ -446,10 +458,35 @@ def run_trial(pid: int, wait=90, plan="auto") -> dict:
         elif ev and ("err" in ev or ev.startswith("no_")):
             res["errors"].append(p)
 
-    sc = sess.create_script(build_js(plan))
+    sc = sess.create_script(build_js(plan, query_only))
     sc.on("message", on_msg)
     sc.load()
     time.sleep(wait)
+    return res
+
+
+def query_tokens(plan="auto", wait=45) -> dict:
+    """只查询 offer token，不拉起收银台。"""
+    step("只查询 offer token（不拉起收银台）")
+    cur = current_play_account()
+    ok(f"当前 Play 账号：{cur or '未知'}")
+    pid = launch_app()
+    if not pid:
+        warn("Google One 没启动")
+        return {"error": "app_not_started"}
+    res = run_trial(pid, wait=wait, plan=plan, query_only=True)
+    REPORT_DIR.mkdir(exist_ok=True)
+    out = REPORT_DIR / f"tokens-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    out.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+    ok(f"token 已保存：{out}")
+    for o in res.get("offers", []):
+        if o.get("token"):
+            print(f"  {o.get('product')} {o.get('id')} {o.get('period')} {o.get('micros')}")
+            print(f"    {o.get('token')}")
+    if res.get("chosen"):
+        c = res["chosen"]
+        print(f"  chosen {c.get('product')} {c.get('id')} {c.get('period')}")
+        print(f"    {c.get('token')}")
     return res
 
 
@@ -621,6 +658,8 @@ def main():
     ap.add_argument("accounts", nargs="?", help="账号文件（每行 email----password----recovery----totp）")
     ap.add_argument("--account", help="单号：email:password:totp")
     ap.add_argument("--check", action="store_true", help="只做环境自检")
+    ap.add_argument("--query", action="store_true", help="只查询 offer token，不拉起收银台")
+    ap.add_argument("--wait", type=int, default=45, help="查询等待秒数（默认 45）")
     ap.add_argument("--serial", default=None)
     ap.add_argument("--no-add", action="store_true", help="跳过自动加号（账号已在手机上）")
     ap.add_argument("--no-switch", action="store_true",
@@ -640,6 +679,10 @@ def main():
     ensure_network()
     ensure_frida_server()
     ensure_module_apk()
+
+    if a.query:
+        query_tokens(plan=a.plan, wait=a.wait)
+        return 0
 
     REPORT_DIR.mkdir(exist_ok=True)
     rows = []

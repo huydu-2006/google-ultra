@@ -92,6 +92,7 @@
     <code id="link"></code>
     <div class="row">
       <button class="btn primary" id="open">打开</button>
+      <button class="btn" id="direct">直链打开</button>
       <button class="btn" id="copy">复制链接</button>
     </div>
   </div>
@@ -169,8 +170,9 @@ function buildUrl(key, legacy) {
     + "&parent=https%3A%2F%2Fone.google.com&pfname=&rpctoken="
     + (1000000 + Math.floor(Math.random() * 8000000))
     + "&jsh=" + encodeURIComponent("m;/_/scs/abc-static/_/js/k=gapi.lb.zh_CN.O/d=1/rs=AHpOoo/m=__features__");
-  const direct = "https://tokenized.play.google.com/eacquire/multiline?ear="
+  const direct = "https://tokenized.play.google.com/eacquire/multiline?authuser=0&ear="
     + encodeURIComponent(JSON.stringify(ear)) + gapi;
+  lastDirect = direct;
   const email = (document.getElementById("email").value || "").trim();
   const chooser = "https://accounts.google.com/AccountChooser?continue="
     + encodeURIComponent(direct);
@@ -179,6 +181,7 @@ function buildUrl(key, legacy) {
 
 /* ---------- 交互 ---------- */
 let lastUrl = "";
+let lastDirect = "";
 const panel = document.getElementById("panel");
 
 document.querySelectorAll(".plan").forEach(el => {
@@ -196,6 +199,10 @@ document.querySelectorAll(".plan").forEach(el => {
 
 document.getElementById("open").addEventListener("click", () => {
   if (lastUrl) window.open(lastUrl, "_blank");
+});
+
+document.getElementById("direct").addEventListener("click", () => {
+  if (lastDirect) window.open(lastDirect, "_blank");
 });
 
 document.getElementById("copy").addEventListener("click", () => {

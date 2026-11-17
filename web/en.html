@@ -69,7 +69,7 @@
   <div class="step">
     <div class="idx">STEP 3</div>
     <h2>Pick a plan</h2>
-    <p>Enter the account email to go through Google's account chooser and lock onto that account. Leave it blank to open the link directly.</p>
+    <p>Enter the account email to go through Google's account chooser and lock onto that account. The link also includes the YouTube Premium add-on; you can cancel it separately in Play after activation.</p>
     <input class="input" id="email" type="email" placeholder="Google account email (optional)" autocomplete="email" spellcheck="false">
     <div class="plans">
       <div class="plan" data-key="20tb">
@@ -114,6 +114,7 @@ const OFFERS = {
   "20tb": { sku: "g1.play.20tb",    token: "AYrTWi65Jbm3KRubLXLLA3Re29zKibSnRbvAJEPfxEIVs/d57w8vEhsU7hSkSAfGyjZH8B7/5aj5UTlidbsEwUH8aPN2RTA6pKiltA==" },
   "30tb": { sku: "g1.play.ai.pro",  token: "AYrTWi7nBQ2Zn0z4s+QJOwg9kQRwH3+z+HXpzRqw9IIU4/C48vPvjH32Bub8SHrWq3YX+yI4g1wJgviYiLCobJNqc9DqRd9WZnDdaQ==" }
 };
+const YOUTUBE = { sku: "g1.youtube_premium_individual_add_on", token: "AVbCH/eW4Nfp8KBl0zlm7x9PhaiCvpnqwUuL2D8NFPBQgmM9+HuYS1h2xH5lLWU/BsBj775LK5GqK8UHKqoSzhDDz+PqP3paNesqLU0r9i6XCrYa" };
 
 /* 把 / - ; ( ) , : 换成客户端内部用的两字节编码 */
 function enc(s) {
@@ -156,10 +157,11 @@ function buildUrl(key, legacy) {
   const o = OFFERS[key];
   const fp = legacy ? FP_TEMPLATE : buildFingerprint();
   const item = [[`subs:com.google.android.apps.subscriptions.red:${o.sku}`, 21], null, null, null, 1, [o.token]];
+  const ytItem = [[`subs:com.google.android.apps.subscriptions.red:${YOUTUBE.sku}`, 21], null, null, null, 1, [YOUTUBE.token]];
   const ear = new Array(25).fill(null);
   ear[2] = [null, null, PATH];
   ear[4] = [fp];
-  ear[13] = [[item]];
+  ear[13] = [[item, ytItem]];
   ear[21] = 1;
 
   const id = "I0_" + Date.now();
